@@ -4,7 +4,7 @@ from io import BytesIO
 
 app = FastAPI()
 
-@app.get("/")
+@app.get("/test")
 async def default_method():
     return "Eikon test API"
     
