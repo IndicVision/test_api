@@ -4,6 +4,10 @@ from io import BytesIO
 
 app = FastAPI()
 
+@app.get("/")
+async def default_method():
+    return "Eikon test API"
+    
 @app.post("/upload-image/")
 async def upload_image(file: UploadFile = File(...)):
     # Check if the uploaded file is an image
@@ -28,3 +32,6 @@ async def upload_image(file: UploadFile = File(...)):
     except Exception as e:
         # Handle other unexpected errors
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
