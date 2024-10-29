@@ -1,37 +1,43 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from flask import Flask, request, jsonify
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 
-app = FastAPI()
+app = Flask(__name__)
 
-@app.get("/test")
-async def default_method():
+@app.route("/test", methods=["GET"])
+def default_method():
     return "Eikon test API"
-    
-@app.post("/upload-image/")
-async def upload_image(file: UploadFile = File(...)):
+
+@app.route("/upload-image/", methods=["POST"])
+def upload_image():
+    # Check if a file was uploaded
+    if 'file' not in request.files:
+        return jsonify({"detail": "No file uploaded"}), 400
+
+    file = request.files['file']
+
     # Check if the uploaded file is an image
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File is not an image.")
+        return jsonify({"detail": "File is not an image"}), 400
 
     try:
         # Read image content
-        contents = await file.read()
+        contents = file.read()
         image = Image.open(BytesIO(contents))
         
         # Get image details
         image_name = file.filename
         image_size = image.size  # (width, height)
 
-        return {"name": image_name, "size": image_size}
+        return jsonify({"name": image_name, "size": image_size})
     
     except UnidentifiedImageError:
         # Handle cases where the file cannot be identified as an image
-        raise HTTPException(status_code=400, detail="Unsupported or corrupted image file.")
+        return jsonify({"detail": "Unsupported or corrupted image file"}), 400
     
     except Exception as e:
         # Handle other unexpected errors
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        return jsonify({"detail": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000)
