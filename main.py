@@ -1,3 +1,4 @@
+import requests
 from flask import Flask, request, jsonify
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
@@ -10,23 +11,24 @@ def default_method():
 
 @app.route("/upload-image/", methods=["POST"])
 def upload_image():
-    # Check if a file was uploaded
-    if 'file' not in request.files:
-        return jsonify({"detail": "No file uploaded"}), 400
+    data = request.get_json()
 
-    file = request.files['file']
+    # Check if "url" field exists in the JSON payload
+    if "url" not in data:
+        return jsonify({"detail": "No URL provided"}), 400
 
-    # Check if the uploaded file is an image
-    if not file.content_type.startswith("image/"):
-        return jsonify({"detail": "File is not an image"}), 400
+    image_url = data["url"]
 
     try:
-        # Read image content
-        contents = file.read()
-        image = Image.open(BytesIO(contents))
+        # Download the image from the provided URL
+        response = requests.get(image_url)
+        response.raise_for_status()  # Check for HTTP errors
+
+        # Open the image using PIL
+        image = Image.open(BytesIO(response.content))
         
         # Get image details
-        image_name = file.filename
+        image_name = image_url.split("/")[-1]  # Extract file name from URL
         image_size = image.size  # (width, height)
 
         return jsonify({"name": image_name, "size": image_size})
@@ -34,6 +36,10 @@ def upload_image():
     except UnidentifiedImageError:
         # Handle cases where the file cannot be identified as an image
         return jsonify({"detail": "Unsupported or corrupted image file"}), 400
+    
+    except requests.exceptions.RequestException as e:
+        # Handle network-related errors
+        return jsonify({"detail": f"Failed to fetch image: {str(e)}"}), 500
     
     except Exception as e:
         # Handle other unexpected errors
